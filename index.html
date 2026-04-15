@@ -2,56 +2,48 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEXEN - Dashboard do Fundador</title>
-    <!-- Usando a versão estável da Ethers.js via CDN -->
-    <script src="https://cloudflare.com"></script>
+    <!-- Importação robusta da Ethers.js -->
+    <script src="https://ethers.io" type="application/javascript"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a0a; color: #00ffcc; padding: 40px; text-align: center; }
-        .card { background: #111; border: 2px solid #00ffcc; padding: 20px; border-radius: 15px; margin: 20px auto; max-width: 500px; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #00ffcc; padding: 20px; text-align: center; }
+        .card { background: #111; border: 2px solid #00ffcc; padding: 20px; border-radius: 15px; margin: 20px auto; max-width: 450px; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
         input { background: #000; border: 1px solid #00ffcc; color: #fff; padding: 12px; margin: 10px; border-radius: 5px; width: 80%; }
-        button { background: #00ffcc; color: #000; border: none; padding: 15px 30px; cursor: pointer; font-weight: bold; border-radius: 5px; transition: 0.3s; width: 85%; margin: 10px; }
-        button:hover { background: #00cca3; transform: scale(1.02); }
-        .status { color: #888; font-size: 0.9em; margin-top: 10px; }
-        #log { color: #ff3333; font-size: 0.8em; }
+        button { background: #00ffcc; color: #000; border: none; padding: 15px; cursor: pointer; font-weight: bold; border-radius: 5px; width: 85%; margin: 10px; transition: 0.3s; }
+        button:hover { background: #00cca3; transform: translateY(-2px); }
+        .status { color: #888; font-size: 0.85em; word-break: break-all; }
+        #log { color: #ff3333; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
     <h1>🛡️ NEXEN Control Center</h1>
-    <p>Painel de Gestão da Camada de Proteção</p>
     
     <div class="card">
-        <h3>1. Conexão com a Rede</h3>
+        <h3>1. Conexão</h3>
         <button id="connectBtn" onclick="connect()">Conectar MetaMask</button>
-        <p id="walletAddress" class="status">Status: Aguardando conexão...</p>
-        <p id="log"></p>
+        <p id="walletAddress" class="status">Status: Desconectado</p>
+        <div id="log"></div>
     </div>
 
     <div class="card">
         <h3>2. Oráculo (Configurar Preços)</h3>
-        <label>ATH (Topo Histórico):</label><br>
+        <label>ATH:</label><br>
         <input type="number" id="athInput" value="100"><br>
-        <label>Preço Atual da NEXEN:</label><br>
+        <label>Preço Atual:</label><br>
         <input type="number" id="currentInput" value="95">
         <button onclick="updatePrices()">Atualizar Rede (Shield)</button>
     </div>
 
     <div class="card">
-        <h3>3. Definir Exchange de Venda</h3>
-        <input type="text" id="exchangeAddr" placeholder="Endereço 0x...">
-        <button onclick="setExchange()">Ativar Endereço no Contrato</button>
-    </div>
-
-    <div class="card">
-        <h3>4. Dados em Tempo Real</h3>
+        <h3>3. Dados da Rede</h3>
         <button onclick="getStats()">Consultar Blockchain</button>
         <p>Total Supply: <span id="supply" style="color: #fff;">---</span> NXN</p>
-        <p>Preço Gravado: <span id="networkPrice" style="color: #fff;">---</span></p>
+        <p>Preço Atual: <span id="networkPrice" style="color: #fff;">---</span></p>
     </div>
 
     <script>
         const contractAddress = "0x3E8777dA0E11a0ebF1862D9a32bf79708751bEc1";
-        
-        // ABI simplificada para as funções do seu contrato V2
         const abi = [
             "function updatePrices(uint256 _ath, uint256 _current) public",
             "function setExchange(address _exchange) public",
@@ -62,11 +54,15 @@
         let provider, signer, contract;
 
         async function connect() {
+            // Verifica se a biblioteca carregou
+            if (typeof ethers === 'undefined') {
+                document.getElementById("log").innerText = "Erro: Biblioteca Ethers ainda carregando. Aguarde 5 segundos e tente de novo.";
+                return;
+            }
+
             try {
-                if (typeof window.ethereum !== 'undefined') {
-                    // Solicita acesso à conta
+                if (window.ethereum) {
                     await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    
                     provider = new ethers.providers.Web3Provider(window.ethereum);
                     signer = provider.getSigner();
                     const address = await signer.getAddress();
@@ -74,15 +70,13 @@
                     contract = new ethers.Contract(contractAddress, abi, signer);
                     
                     document.getElementById("walletAddress").innerText = "Conectado: " + address;
-                    document.getElementById("connectBtn").innerText = "Carteira Pronta";
-                    document.getElementById("connectBtn").style.background = "#555";
                     document.getElementById("log").innerText = "";
+                    document.getElementById("connectBtn").innerText = "Conectado ✅";
                 } else {
-                    document.getElementById("log").innerText = "Erro: MetaMask não detectada. Tente usar um servidor local ou hospedar no GitHub.";
+                    document.getElementById("log").innerText = "MetaMask não detectada!";
                 }
             } catch (error) {
-                console.error(error);
-                document.getElementById("log").innerText = "Erro ao conectar: " + error.message;
+                document.getElementById("log").innerText = "Erro: " + error.message;
             }
         }
 
@@ -90,24 +84,16 @@
             try {
                 const ath = document.getElementById("athInput").value;
                 const current = document.getElementById("currentInput").value;
-                const tx = await contract.updatePrices(ath, current);
                 document.getElementById("log").style.color = "#00ffcc";
-                document.getElementById("log").innerText = "Enviando transação...";
+                document.getElementById("log").innerText = "Processando transação...";
+                
+                const tx = await contract.updatePrices(ath, current);
                 await tx.wait();
-                alert("Preços atualizados na NEXEN!");
+                
+                document.getElementById("log").innerText = "Sucesso! Preços atualizados.";
             } catch (error) {
-                document.getElementById("log").innerText = "Erro: " + error.data?.message || error.message;
-            }
-        }
-
-        async function setExchange() {
-            try {
-                const addr = document.getElementById("exchangeAddr").value;
-                const tx = await contract.setExchange(addr);
-                await tx.wait();
-                alert("Endereço de Exchange configurado!");
-            } catch (error) {
-                alert("Erro: " + error.message);
+                document.getElementById("log").style.color = "#ff3333";
+                document.getElementById("log").innerText = "Erro na transação.";
             }
         }
 
@@ -118,7 +104,7 @@
                 document.getElementById("supply").innerText = ethers.utils.formatUnits(supply, 18);
                 document.getElementById("networkPrice").innerText = price.toString();
             } catch (error) {
-                alert("Erro ao ler dados: " + error.message);
+                document.getElementById("log").innerText = "Erro ao ler dados.";
             }
         }
     </script>
