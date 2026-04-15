@@ -1,44 +1,135 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXEN Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+    <title>NEXEN - Dashboard do Fundador</title>
+    <!-- LINK CORRIGIDO: Usando CDNJS (Estável e Gratuito) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" type="application/javascript"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #00ffcc; padding: 20px; text-align: center; }
+        .card { background: #111; border: 2px solid #00ffcc; padding: 20px; border-radius: 15px; margin: 20px auto; max-width: 450px; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
+        input { background: #000; border: 1px solid #00ffcc; color: #fff; padding: 12px; margin: 10px; border-radius: 5px; width: 80%; }
+        button { background: #00ffcc; color: #000; border: none; padding: 15px; cursor: pointer; font-weight: bold; border-radius: 5px; width: 85%; margin: 10px; transition: 0.3s; }
+        button:hover { background: #00cca3; transform: translateY(-2px); }
+        .button-disconnect { background: #ff3333; width: 40%; }
+        .button-disconnect:hover { background: #cc0000; }
+        .button-group { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .status { color: #888; font-size: 0.85em; word-break: break-all; }
+        #log { color: #ff3333; font-weight: bold; margin-top: 10px; min-height: 20px; }
+    </style>
 </head>
 <body>
-    <h1>NEXEN Dashboard</h1>
-    <button id="connectButton">Connect MetaMask</button>
-    <button id="disconnectButton" style="display:none;">Disconnect</button>
-    <h2>Account: <span id="account"></span></h2>
+    <h1>🛡️ NEXEN Control Center</h1>
+    <div class="card">
+        <h3>1. Conexão</h3>
+        <div class="button-group">
+            <button id="connectBtn" onclick="connect()">Conectar MetaMask</button>
+            <button id="disconnectBtn" class="button-disconnect" onclick="disconnect()" style="display:none;">Desconectar</button>
+        </div>
+        <p id="walletAddress" class="status">Status: Desconectado</p>
+        <div id="log"></div>
+    </div>
+    <div class="card">
+        <h3>2. Oráculo (Configurar Preços)</h3>
+        <label>ATH:</label><br>
+        <input type="number" id="athInput" value="100"><br>
+        <label>Preço Atual:</label><br>
+        <input type="number" id="currentInput" value="95">
+        <button onclick="updatePrices()">Atualizar Rede (Shield)</button>
+    </div>
+    <div class="card">
+        <h3>3. Dados da Rede</h3>
+        <button onclick="getStats()">Consultar Blockchain</button>
+        <p>Total Supply: <span id="supply" style="color: #fff;">---</span> NXN</p>
+        <p>Preço Atual: <span id="networkPrice" style="color: #fff;">---</span></p>
+    </div>
     <script>
-        let web3;
-        let userAccount;
+        const contractAddress = "0x3E8777dA0E11a0ebF1862D9a32bf79708751bEc1";
+        const abi = [
+            "function updatePrices(uint256 _ath, uint256 _current) public",
+            "function setExchange(address _exchange) public",
+            "function totalSupply() public view returns (uint256)",
+            "function currentPrice() public view returns (uint256)"
+        ];
+        let provider, signer, contract;
+        let isConnected = false;
 
-        window.addEventListener('load', async () => {
-            // Check if MetaMask is installed
-            if (typeof window.ethereum !== 'undefined') {
-                web3 = new Web3(window.ethereum);
-                document.getElementById('connectButton').addEventListener('click', connectMetaMask);
-                document.getElementById('disconnectButton').addEventListener('click', disconnectMetaMask);
-            } else {
-                alert('Please install MetaMask!');
+        async function connect() {
+            if (typeof ethers === 'undefined') {
+                document.getElementById("log").innerText = "Erro: Link da biblioteca bloqueado. Tente recarregar a página (Ctrl+F5).";
+                return;
             }
-        });
-
-        async function connectMetaMask() {
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            userAccount = accounts[0];
-            document.getElementById('account').innerText = userAccount;
-            document.getElementById('connectButton').style.display = 'none';
-            document.getElementById('disconnectButton').style.display = 'block';
+            try {
+                if (window.ethereum) {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    const address = await signer.getAddress();
+                    contract = new ethers.Contract(contractAddress, abi, signer);
+                    document.getElementById("walletAddress").innerText = "Conectado: " + address;
+                    document.getElementById("log").innerText = "";
+                    document.getElementById("connectBtn").innerText = "Conectado ✅";
+                    document.getElementById("connectBtn").disabled = true;
+                    document.getElementById("disconnectBtn").style.display = "block";
+                    isConnected = true;
+                } else {
+                    document.getElementById("log").innerText = "MetaMask não detectada!";
+                }
+            } catch (error) {
+                document.getElementById("log").innerText = "Erro: " + error.message;
+            }
         }
 
-        async function disconnectMetaMask() {
-            userAccount = null;
-            document.getElementById('account').innerText = '';
-            document.getElementById('connectButton').style.display = 'block';
-            document.getElementById('disconnectButton').style.display = 'none';
+        function disconnect() {
+            isConnected = false;
+            provider = null;
+            signer = null;
+            contract = null;
+            
+            document.getElementById("walletAddress").innerText = "Status: Desconectado";
+            document.getElementById("log").innerText = "Desconectado com sucesso!";
+            document.getElementById("connectBtn").innerText = "Conectar MetaMask";
+            document.getElementById("connectBtn").disabled = false;
+            document.getElementById("disconnectBtn").style.display = "none";
+            
+            setTimeout(() => {
+                document.getElementById("log").innerText = "";
+            }, 2000);
+        }
+
+        async function updatePrices() {
+            if (!isConnected) {
+                document.getElementById("log").innerText = "Erro: Conecte à MetaMask primeiro!";
+                return;
+            }
+            try {
+                const ath = document.getElementById("athInput").value;
+                const current = document.getElementById("currentInput").value;
+                document.getElementById("log").style.color = "#00ffcc";
+                document.getElementById("log").innerText = "Processando transação...";
+                const tx = await contract.updatePrices(ath, current);
+                await tx.wait();
+                document.getElementById("log").innerText = "Sucesso! Preços atualizados.";
+            } catch (error) {
+                document.getElementById("log").style.color = "#ff3333";
+                document.getElementById("log").innerText = "Erro na transação ou você recusou na MetaMask.";
+            }
+        }
+
+        async function getStats() {
+            if (!isConnected) {
+                document.getElementById("log").innerText = "Erro: Conecte à MetaMask primeiro!";
+                return;
+            }
+            try {
+                const supply = await contract.totalSupply();
+                const price = await contract.currentPrice();
+                document.getElementById("supply").innerText = ethers.utils.formatUnits(supply, 18);
+                document.getElementById("networkPrice").innerText = price.toString();
+            } catch (error) {
+                document.getElementById("log").innerText = "Erro ao ler dados da Blockchain.";
+            }
         }
     </script>
 </body>
