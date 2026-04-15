@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEXEN - Dashboard do Fundador</title>
-    <!-- Importação robusta da Ethers.js -->
-    <script src="https://ethers.io" type="application/javascript"></script>
+    <!-- LINK CORRIGIDO: Usando CDNJS (Estável e Gratuito) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" type="application/javascript"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #00ffcc; padding: 20px; text-align: center; }
         .card { background: #111; border: 2px solid #00ffcc; padding: 20px; border-radius: 15px; margin: 20px auto; max-width: 450px; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
@@ -13,19 +13,17 @@
         button { background: #00ffcc; color: #000; border: none; padding: 15px; cursor: pointer; font-weight: bold; border-radius: 5px; width: 85%; margin: 10px; transition: 0.3s; }
         button:hover { background: #00cca3; transform: translateY(-2px); }
         .status { color: #888; font-size: 0.85em; word-break: break-all; }
-        #log { color: #ff3333; font-weight: bold; margin-top: 10px; }
+        #log { color: #ff3333; font-weight: bold; margin-top: 10px; min-height: 20px; }
     </style>
 </head>
 <body>
     <h1>🛡️ NEXEN Control Center</h1>
-    
     <div class="card">
         <h3>1. Conexão</h3>
         <button id="connectBtn" onclick="connect()">Conectar MetaMask</button>
         <p id="walletAddress" class="status">Status: Desconectado</p>
         <div id="log"></div>
     </div>
-
     <div class="card">
         <h3>2. Oráculo (Configurar Preços)</h3>
         <label>ATH:</label><br>
@@ -34,14 +32,12 @@
         <input type="number" id="currentInput" value="95">
         <button onclick="updatePrices()">Atualizar Rede (Shield)</button>
     </div>
-
     <div class="card">
         <h3>3. Dados da Rede</h3>
         <button onclick="getStats()">Consultar Blockchain</button>
         <p>Total Supply: <span id="supply" style="color: #fff;">---</span> NXN</p>
         <p>Preço Atual: <span id="networkPrice" style="color: #fff;">---</span></p>
     </div>
-
     <script>
         const contractAddress = "0x3E8777dA0E11a0ebF1862D9a32bf79708751bEc1";
         const abi = [
@@ -50,25 +46,19 @@
             "function totalSupply() public view returns (uint256)",
             "function currentPrice() public view returns (uint256)"
         ];
-
         let provider, signer, contract;
-
         async function connect() {
-            // Verifica se a biblioteca carregou
             if (typeof ethers === 'undefined') {
-                document.getElementById("log").innerText = "Erro: Biblioteca Ethers ainda carregando. Aguarde 5 segundos e tente de novo.";
+                document.getElementById("log").innerText = "Erro: Link da biblioteca bloqueado. Tente recarregar a página (Ctrl+F5).";
                 return;
             }
-
             try {
                 if (window.ethereum) {
                     await window.ethereum.request({ method: 'eth_requestAccounts' });
                     provider = new ethers.providers.Web3Provider(window.ethereum);
                     signer = provider.getSigner();
                     const address = await signer.getAddress();
-                    
                     contract = new ethers.Contract(contractAddress, abi, signer);
-                    
                     document.getElementById("walletAddress").innerText = "Conectado: " + address;
                     document.getElementById("log").innerText = "";
                     document.getElementById("connectBtn").innerText = "Conectado ✅";
@@ -79,24 +69,20 @@
                 document.getElementById("log").innerText = "Erro: " + error.message;
             }
         }
-
         async function updatePrices() {
             try {
                 const ath = document.getElementById("athInput").value;
                 const current = document.getElementById("currentInput").value;
                 document.getElementById("log").style.color = "#00ffcc";
                 document.getElementById("log").innerText = "Processando transação...";
-                
                 const tx = await contract.updatePrices(ath, current);
                 await tx.wait();
-                
                 document.getElementById("log").innerText = "Sucesso! Preços atualizados.";
             } catch (error) {
                 document.getElementById("log").style.color = "#ff3333";
-                document.getElementById("log").innerText = "Erro na transação.";
+                document.getElementById("log").innerText = "Erro na transação ou você recusou na MetaMask.";
             }
         }
-
         async function getStats() {
             try {
                 const supply = await contract.totalSupply();
@@ -104,7 +90,7 @@
                 document.getElementById("supply").innerText = ethers.utils.formatUnits(supply, 18);
                 document.getElementById("networkPrice").innerText = price.toString();
             } catch (error) {
-                document.getElementById("log").innerText = "Erro ao ler dados.";
+                document.getElementById("log").innerText = "Erro ao ler dados da Blockchain.";
             }
         }
     </script>
