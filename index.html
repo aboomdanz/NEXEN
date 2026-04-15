@@ -3,58 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        .button-group {
-            display: flex;
-            gap: 10px;
-        }
-        .button-disconnect {
-            background-color: #ff3333;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-        }
-        .button-connect {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-        }
-    </style>
-    <title>NEXEN</title>
+    <title>NEXEN Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
 </head>
 <body>
-    <div class="button-group">
-        <button id="connectButton" class="button-connect">Connect</button>
-        <button id="disconnectButton" class="button-disconnect" style="display: none;">Disconnect</button>
-    </div>
+    <h1>NEXEN Dashboard</h1>
+    <button id="connectButton">Connect MetaMask</button>
+    <button id="disconnectButton" style="display:none;">Disconnect</button>
+    <h2>Account: <span id="account"></span></h2>
     <script>
-        let isConnected = false;
+        let web3;
+        let userAccount;
 
-        document.getElementById('connectButton').onclick = function() {
-            // Connect logic
-            isConnected = true;
-            document.getElementById('disconnectButton').style.display = 'block';
-        };
-
-        document.getElementById('disconnectButton').onclick = function() {
-            // Disconnect logic
-            isConnected = false;
-            document.getElementById('disconnectButton').style.display = 'none';
-        };
-
-        function updatePrices() {
-            if (isConnected) {
-                // Update prices logic
+        window.addEventListener('load', async () => {
+            // Check if MetaMask is installed
+            if (typeof window.ethereum !== 'undefined') {
+                web3 = new Web3(window.ethereum);
+                document.getElementById('connectButton').addEventListener('click', connectMetaMask);
+                document.getElementById('disconnectButton').addEventListener('click', disconnectMetaMask);
+            } else {
+                alert('Please install MetaMask!');
             }
+        });
+
+        async function connectMetaMask() {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            userAccount = accounts[0];
+            document.getElementById('account').innerText = userAccount;
+            document.getElementById('connectButton').style.display = 'none';
+            document.getElementById('disconnectButton').style.display = 'block';
         }
 
-        function getStats() {
-            if (isConnected) {
-                // Get stats logic
-            }
+        async function disconnectMetaMask() {
+            userAccount = null;
+            document.getElementById('account').innerText = '';
+            document.getElementById('connectButton').style.display = 'block';
+            document.getElementById('disconnectButton').style.display = 'none';
         }
     </script>
 </body>
